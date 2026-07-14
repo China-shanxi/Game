@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贪吃蛇 | 星屿小游戏站</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:"思源宋体",serif;}
+body.dark{background:#0c101c;color:#e8edf7;}
+body.light{background:#f7f9ff;color:#222940;}
+.star{position:fixed;pointer-events:none;animation:starFloat 12s linear infinite;opacity:0.6;z-index:-1;}
+@keyframes starFloat{
+0%{transform:translateY(100vh) rotate(0deg);opacity:0;}
+15%{opacity:1;}
+85%{opacity:1;}
+100%{transform:translateY(-10vh) rotate(360deg);opacity:0;}
+}
+.soul-title{
+font-size:34px;font-weight:300;letter-spacing:5px;
+color:#fff;
+text-shadow:0 0 6px #a8b8ff,0 0 12px #839cff;
+}
+.broad{width:100%;height:36px;background:#b8c8ff;line-height:36px;overflow:hidden;}
+.broad-text{white-space:nowrap;animation:broadRun 24s linear infinite;color:#0c101c;font-size:15px;}
+@keyframes broadRun{0%{transform:translateX(100%);}100%{transform:translateX(-100%);}}
+nav{width:100%;background:rgba(20,26,44,0.75);padding:16px 0;text-align:center;border-bottom:1px solid #839cff60;backdrop-filter:blur(6px);}
+nav a{color:#d0daff;text-decoration:none;margin:0 14px;padding:9px 16px;border-radius:26px;transition:0.4s;font-size:16px;}
+nav a:hover{background:#839cff;color:#0c101c;box-shadow:0 0 14px #839cff70;}
+.box{width:92%;max-width:1250px;margin:32px auto;padding:28px;border-radius:20px;border:1px solid #839cff40;background:rgba(30,38,60,0.4);box-shadow:0 0 30px #627fff20;backdrop-filter:blur(4px);text-align:center;}
+.box h2{margin-bottom:22px;color:#a8b8ff;border-left:4px solid #839cff;padding-left:12px;font-weight:400;text-align:left;}
+canvas{border:2px solid #839cff;border-radius:12px;background:#0a0e1a;}
+.btn{display:inline-block;padding:11px 24px;background:linear-gradient(45deg,#839cff,#627fff);color:#0c101c;border:none;border-radius:32px;font-weight:500;cursor:pointer;margin:10px;transition:0.35s;font-size:15px;}
+.btn:hover{transform:scale(1.04);box-shadow:0 0 18px #839cff80;}
+.theme-switch{position:fixed;top:18px;right:20px;z-index:999;}
+.score-text{font-size:20px;color:#c0ccff;margin:10px 0;}
+footer{margin-top:60px;padding:24px;text-align:center;color:#949fc7;font-size:14px;border-top:1px solid #839cff25;}
+</style>
+</head>
+<body class="dark">
+<div class="theme-switch">
+<button class="btn" onclick="toggleTheme()">切换静谧/温柔模式</button>
+</div>
+<div class="broad">
+<div class="broad-text">贪吃蛇｜方向键上下左右控制，吃到食物加分，撞墙/撞身体游戏结束</div>
+</div>
+<div style="text-align:center;margin:30px 0;">
+<h1 class="soul-title">经典贪吃蛇</h1>
+<p style="color:#c0ccff;margin-top:10px;letter-spacing:2px;">休闲解压小游戏</p>
+</div>
+<nav>
+<a href="index.html">首页</a>
+<a href="gameList.html">全部游戏</a>
+<a href="snake.html">贪吃蛇</a>
+<a href="block.html">俄罗斯方块</a>
+<a href="puzzle.html">拼图游戏</a>
+<a href="click.html">点击消消乐</a>
+<a href="comment.html">玩家评论</a>
+<a href="materialGame.html">背景素材</a>
+</nav>
+<div class="box">
+<h2>游戏面板</h2>
+<div class="score-text">当前得分：<span id="score">0</span></div>
+<canvas id="snakeCanvas" width="400" height="400"></canvas>
+<div>
+<button class="btn" onclick="startGame()">重新开始</button>
+</div>
+<p style="color:#949fc7;margin-top:15px;">操作：键盘上下左右方向键控制移动</p>
+</div>
+<footer>星屿小游戏站 © 2026</footer>
+<script>
+const canvas = document.getElementById('snakeCanvas');
+const ctx = canvas.getContext('2d');
+const scoreDom = document.getElementById('score');
+let snake = [];
+let food = {};
+let dir = 'right';
+let nextDir = 'right';
+let score = 0;
+let gameLoop = null;
+const size = 20;
+
+// 初始化游戏
+function initGame(){
+    snake = [{x:4,y:10},{x:3,y:10},{x:2,y:10}];
+    dir = 'right';
+    nextDir = 'right';
+    score = 0;
+    scoreDom.innerText = score;
+    createFood();
+    if(gameLoop) clearInterval(gameLoop);
+    gameLoop = setInterval(update,120);
+}
+// 生成食物
+function createFood(){
+    food = {
+        x:Math.floor(Math.random()*(canvas.width/size)),
+        y:Math.floor(Math.random()*(canvas.height/size))
+    }
+}
+// 更新画面
+function update(){
+    // 切换方向
+    if(dir === 'right' && nextDir !== 'left') dir = nextDir;
+    if(dir === 'left' && nextDir !== 'right') dir = nextDir;
+    if(dir === 'up' && nextDir !== 'down') dir = nextDir;
+    if(dir === 'down' && nextDir !== 'up') dir = nextDir;
+    // 头部新坐标
+    let head = {...snake[0]};
+    if(dir === 'right') head.x++;
+    if(dir === 'left') head.x--;
+    if(dir === 'up') head.y--;
+    if(dir === 'down') head.y++;
+    // 撞墙判定
+    if(head.x<0||head.y<0||head.x>=canvas.width/size||head.y>=canvas.height/size){
+        clearInterval(gameLoop);
+        alert("游戏结束！得分："+score+"，点击重新开始");
+        return;
+    }
+    // 撞自己
+    for(let s of snake){
+        if(s.x === head.x && s.y === head.y){
+            clearInterval(gameLoop);
+            alert("游戏结束！得分："+score+"，点击重新开始");
+            return;
+        }
+    }
+    snake.unshift(head);
+    // 吃到食物
+    if(head.x === food.x && head.y === food.y){
+        score += 10;
+        scoreDom.innerText = score;
+        createFood();
+    }else{
+        snake.pop();
+    }
+    render();
+}
+// 渲染画面
+function render(){
+    ctx.fillStyle="#0a0e1a";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    // 食物
+    ctx.fillStyle="#839cff";
+    ctx.fillRect(food.x*size,food.y*size,size-2,size-2);
+    // 蛇
+    snake.forEach((seg,i)=>{
+        ctx.fillStyle = i===0 ? "#fff":"#a8b8ff";
+        ctx.fillRect(seg.x*size,seg.y*size,size-2,size-2);
+    })
+}
+// 键盘控制
+document.addEventListener('keydown',e=>{
+    if(e.key === "ArrowUp") nextDir = "up";
+    if(e.key === "ArrowDown") nextDir = "down";
+    if(e.key === "ArrowLeft") nextDir = "left";
+    if(e.key === "ArrowRight") nextDir = "right";
+})
+function startGame(){
+    initGame();
+}
+// 星空粒子
+function createStar(){
+const star = document.createElement('div');
+star.className = 'star';
+star.innerHTML = '✦';
+star.style.left = Math.random()*100+'vw';
+star.style.fontSize = Math.random()*18+6+'px';
+star.style.color = ['#a8b8ff','#d0daff','#fff'][Math.floor(Math.random()*3)];
+document.body.appendChild(star);
+setTimeout(()=>star.remove(),12000);
+}
+setInterval(createStar,400);
+function toggleTheme(){
+document.body.classList.toggle('dark');
+document.body.classList.toggle('light');
+}
+window.onload = function(){
+let saveBg = localStorage.getItem("gameGlobalBg");
+if(saveBg){
+document.body.style.backgroundImage = `url(${saveBg})`;
+document.body.style.backgroundSize = "cover";
+document.body.style.backgroundAttachment = "fixed";
+document.body.style.backgroundRepeat = "no-repeat";
+}
+}
+</script>
+</body>
+</html>
